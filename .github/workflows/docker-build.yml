@@ -9,6 +9,8 @@ on:
 
 jobs:
   build-jdk:
+    # This workflow pushes to Docker Hub with upstream's secrets, so forks skip it. build-docker needs this job, so it is skipped too.
+    if: github.repository == 'TeamPiped/Piped-Backend'
     uses: ./.github/workflows/fat-build.yml
 
   build-docker:
