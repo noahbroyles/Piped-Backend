@@ -7,6 +7,10 @@ COPY . /app/
 RUN --mount=type=cache,target=/root/.gradle/caches/ \
  ./gradlew shadowJar
 
+# The VERSION file is gitignored, so a clean checkout does not have one.
+# Create it when it is missing, so that the COPY in the final stage does not fail (the backend reports unknown without it).
+RUN test -f VERSION || echo unknown > VERSION
+
 FROM eclipse-temurin:21-jre
 
 RUN --mount=type=cache,target=/var/cache/apt/ \
@@ -23,7 +27,7 @@ COPY hotspot-entrypoint.sh docker-healthcheck.sh /
 
 COPY --from=build /app/build/libs/piped-1.0-all.jar /app/piped.jar
 
-COPY VERSION .
+COPY --from=build /app/VERSION .
 
 EXPOSE 8080
 

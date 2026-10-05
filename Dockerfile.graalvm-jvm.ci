@@ -1,7 +1,9 @@
 FROM container-registry.oracle.com/graalvm/native-image:latest as build
 
+# jdk.unsupported provides sun.misc.Unsafe, which the protobuf classes in NewPipeExtractor need to fetch playlists.
+# Without it the request fails with a NoClassDefFoundError, which the route handlers do not catch, so the request hangs.
 RUN jlink \
-    --add-modules java.base,java.logging,java.sql,java.management,java.xml,java.naming,java.desktop,jdk.crypto.ec \
+    --add-modules java.base,java.logging,java.sql,java.management,java.xml,java.naming,java.desktop,jdk.crypto.ec,jdk.unsupported \
     --strip-debug \
     --no-man-pages \
     --no-header-files \

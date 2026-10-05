@@ -11,10 +11,12 @@ services:
     command: [ "sh", "-c", "sleep 10 && java --enable-preview -jar piped.jar" ]
   yb-master:
     image: yugabytedb/yugabyte:latest
+    # Recent images run as the non-root yugabyte user, which cannot create directories in /mnt, so the data dir is a new directory in the home directory.
+    # It cannot be /home/yugabyte/master, as the image already has a root owned directory with that name.
     command:
       [
         "/home/yugabyte/bin/yb-master",
-        "--fs_data_dirs=/mnt/master",
+        "--fs_data_dirs=/home/yugabyte/master-data",
         "--master_addresses=yb-master:7100",
         "--rpc_bind_addresses=yb-master:7100",
         "--replication_factor=1"
@@ -23,10 +25,12 @@ services:
       SERVICE_7000_NAME: yb-master
   yb-tserver:
     image: yugabytedb/yugabyte:latest
+    # Recent images run as the non-root yugabyte user, which cannot create directories in /mnt, so the data dir is a new directory in the home directory.
+    # It cannot be /home/yugabyte/tserver, as the image already has a root owned directory with that name.
     command:
       [
         "/home/yugabyte/bin/yb-tserver",
-        "--fs_data_dirs=/mnt/tserver",
+        "--fs_data_dirs=/home/yugabyte/tserver-data",
         "--start_pgsql_proxy",
         "--rpc_bind_addresses=yb-tserver:9100",
         "--tserver_master_addrs=yb-master:7100"
