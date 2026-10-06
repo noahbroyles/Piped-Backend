@@ -25,6 +25,21 @@ It also fixes six security problems in the official backend:
 
 A multi-architecture image (amd64 and arm64) is published to GitHub Container Registry on every push to `master`. It is a drop-in replacement for the official image in a [Piped-Docker](https://github.com/TeamPiped/Piped-Docker) installation, and it reads the same `config.properties`.
 
+### Easiest: use the Piped-Docker fork
+
+[noahbroyles/Piped-Docker](https://github.com/noahbroyles/Piped-Docker) sets up a complete instance the same way as the official Piped-Docker, but with this backend and the fixed frontend from [noahbroyles/Piped](https://github.com/noahbroyles/Piped), which makes live streams play instead of spinning forever. You get every fix in both forks without editing any images yourself. Its `configure-instance.sh` also generates a random `PUBSUB_SECRET` for you, and offers automatic updates with Watchtower for every stack type.
+
+For a new instance, use it in place of the official repository:
+
+```sh
+git clone https://github.com/noahbroyles/Piped-Docker
+cd Piped-Docker
+./configure-instance.sh
+docker compose up -d
+```
+
+For an existing installation, follow [Switching an existing installation](https://github.com/noahbroyles/Piped-Docker#switching-an-existing-installation) in its README to switch both images, or switch only the backend as described below.
+
 ### Switch the backend image
 
 In the `docker-compose.yml` of your Piped-Docker installation, find the backend service (the one that uses the `1337kavin/piped` image) and change only its `image` line. Keep its volumes, including the mount of your `config.properties` at `/app/config.properties`, and everything else as it is.
