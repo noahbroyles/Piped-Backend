@@ -18,7 +18,6 @@ import me.kavin.piped.server.handlers.auth.UserHandlers;
 import me.kavin.piped.utils.*;
 import me.kavin.piped.utils.resp.*;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.hibernate.Session;
 import org.jetbrains.annotations.NotNull;
 
