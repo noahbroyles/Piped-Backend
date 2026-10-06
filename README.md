@@ -12,7 +12,14 @@ An advanced open-source privacy friendly alternative to YouTube, crafted with th
 
 ## Using this fork with Piped-Docker
 
-The official `1337kavin/piped:latest` image ships an outdated NewPipeExtractor, which can make `/streams` return a single progressive stream (itag 18) with no audio streams. This fork updates NewPipeExtractor to upstream commit `01fdde0` (Piped-Backend PR #895), and a multi-architecture image (amd64 and arm64) is published to GitHub Container Registry on every push to `master`. It is a drop-in replacement for the official image in a [Piped-Docker](https://github.com/TeamPiped/Piped-Docker) installation, and it reads the same `config.properties`.
+The official `1337kavin/piped:latest` image ships an outdated NewPipeExtractor, which can make `/streams` return a single progressive stream (itag 18) with no audio streams, so videos are only available in 360p. This fork updates NewPipeExtractor to upstream commit `01fdde0` (Piped-Backend PR #895).
+
+It also fixes two security problems in the official backend:
+
+-   A server-side request forgery (SSRF) vulnerability, which lets anyone who can reach the API, without logging in, make the backend send requests to other addresses, such as devices on your local network.
+-   Libraries with 23 known vulnerabilities (Jackson, Bouncy Castle, the PostgreSQL driver, jsoup and the MinIO client), which are upgraded to fixed releases.
+
+A multi-architecture image (amd64 and arm64) is published to GitHub Container Registry on every push to `master`. It is a drop-in replacement for the official image in a [Piped-Docker](https://github.com/TeamPiped/Piped-Docker) installation, and it reads the same `config.properties`.
 
 ### Switch the backend image
 
