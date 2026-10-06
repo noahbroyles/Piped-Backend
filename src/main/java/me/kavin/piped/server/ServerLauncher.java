@@ -567,8 +567,9 @@ public class ServerLauncher extends MultithreadedHttpServerLauncher {
         }
 
         try {
+            // Details are logged/reported in ExceptionHandler.handle; never expose them to the client.
             return getJsonResponse(500, mapper
-                    .writeValueAsBytes(new StackTraceResponse(ExceptionUtils.getStackTrace(e), e.getMessage())), "private");
+                    .writeValueAsBytes(new SimpleErrorMessage("An internal server error occurred.")), "private");
         } catch (JsonProcessingException ex) {
             return HttpResponse.ofCode(500);
         }
