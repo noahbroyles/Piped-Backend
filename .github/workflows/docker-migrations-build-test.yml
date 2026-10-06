@@ -24,7 +24,7 @@ jobs:
       - name: Run Build
         run: ./gradlew shadowJar
       - run: mv build/libs/piped-*-all.jar piped.jar
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: piped-old.jar
           path: piped.jar
@@ -50,11 +50,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: echo "unknown" > VERSION
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v7
         with:
           name: piped-old.jar
       - name: Build Old Image Locally
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           load: true
@@ -63,11 +63,11 @@ jobs:
       - name: Start Docker-Compose services
         run: docker compose -f ${{ matrix.docker-compose-file }} up -d && sleep ${{ matrix.sleep }}
       - run: rm piped.jar
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v7
         with:
           name: piped.jar
       - name: Build New Image Locally
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           load: true
