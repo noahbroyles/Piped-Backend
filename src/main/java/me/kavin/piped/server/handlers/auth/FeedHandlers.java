@@ -149,11 +149,26 @@ public class FeedHandlers {
         return null;
     }
 
-    public static byte[] unauthenticatedFeedResponse(String[] channelIds) throws Exception {
+    /**
+     * Filters out invalid IDs and enforces a per-request cap. Unknown IDs on the unauthenticated
+     * endpoints are stored and looked up on YouTube, so an unbounded list could get the server's IP blocked.
+     */
+    private static Set<String> filterUnauthenticatedChannelIds(String[] channelIds) {
 
-        Set<String> filteredChannels = Arrays.stream(channelIds)
+        Set<String> filtered = Arrays.stream(channelIds)
                 .filter(ChannelHelpers::isValidId)
                 .collect(Collectors.toUnmodifiableSet());
+
+        if (filtered.size() > Constants.MAX_UNAUTHENTICATED_CHANNELS)
+            ExceptionHandler.throwErrorResponse(new InvalidRequestResponse(
+                    "Too many channels provided, the maximum is " + Constants.MAX_UNAUTHENTICATED_CHANNELS));
+
+        return filtered;
+    }
+
+    public static byte[] unauthenticatedFeedResponse(String[] channelIds) throws Exception {
+
+        Set<String> filteredChannels = filterUnauthenticatedChannelIds(channelIds);
 
         if (filteredChannels.isEmpty())
             return mapper.writeValueAsBytes(Collections.EMPTY_LIST);
@@ -178,9 +193,7 @@ public class FeedHandlers {
 
     public static byte[] unauthenticatedFeedResponseRSS(String[] channelIds, @Nullable String filter) throws Exception {
 
-        Set<String> filteredChannels = Arrays.stream(channelIds)
-                .filter(ChannelHelpers::isValidId)
-                .collect(Collectors.toUnmodifiableSet());
+        Set<String> filteredChannels = filterUnauthenticatedChannelIds(channelIds);
 
         if (filteredChannels.isEmpty())
             ExceptionHandler.throwErrorResponse(new InvalidRequestResponse("No valid channel IDs provided"));
@@ -373,9 +386,7 @@ public class FeedHandlers {
     public static byte[] unauthenticatedSubscriptionsResponse(String[] channelIds)
             throws IOException {
 
-        Set<String> filtered = Arrays.stream(channelIds)
-                .filter(ChannelHelpers::isValidId)
-                .collect(Collectors.toUnmodifiableSet());
+        Set<String> filtered = filterUnauthenticatedChannelIds(channelIds);
 
         if (filtered.isEmpty())
             return mapper.writeValueAsBytes(Collections.EMPTY_LIST);

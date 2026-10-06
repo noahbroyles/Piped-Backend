@@ -33,6 +33,7 @@ public class Constants {
     public static final int PORT;
     public static final String HTTP_WORKERS;
     public static final int MAX_BODY_SIZE;
+    public static final int MAX_UNAUTHENTICATED_CHANNELS;
 
     public static final String PROXY_PART;
 
@@ -136,6 +137,7 @@ public class Constants {
             HTTP_WORKERS = getProperty(prop, "HTTP_WORKERS",
                     String.valueOf(Runtime.getRuntime().availableProcessors()));
             MAX_BODY_SIZE = Integer.parseInt(getProperty(prop, "MAX_BODY_SIZE", String.valueOf(5 * 1024 * 1024)));
+            MAX_UNAUTHENTICATED_CHANNELS = Integer.parseInt(getProperty(prop, "MAX_UNAUTHENTICATED_CHANNELS", "500"));
             PROXY_PART = getProperty(prop, "PROXY_PART");
             IMAGE_PROXY_PART = getProperty(prop, "IMAGE_PROXY_PART", PROXY_PART);
             PROXY_HASH_SECRET = Optional.ofNullable(getProperty(prop, "PROXY_HASH_SECRET")).map(s -> s.getBytes(StandardCharsets.UTF_8)).orElse(null);
