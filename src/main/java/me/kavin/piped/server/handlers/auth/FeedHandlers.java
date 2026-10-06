@@ -150,8 +150,8 @@ public class FeedHandlers {
     }
 
     /**
-     * Filters out invalid IDs and enforces a per-request cap. Unknown IDs on the unauthenticated
-     * endpoints are stored and looked up on YouTube, so an unbounded list could get the server's IP blocked.
+     * Filters out invalid IDs and enforces a hard per-request cap on the list size. The number of unknown IDs
+     * that get stored and looked up on YouTube is limited separately, in {@link #addMissingChannels}.
      */
     private static Set<String> filterUnauthenticatedChannelIds(String[] channelIds) {
 
@@ -272,6 +272,7 @@ public class FeedHandlers {
                     var tr = s.beginTransaction();
                     channelIds.stream()
                             .filter(id -> !existing.contains(id))
+                            .limit(Constants.MAX_UNKNOWN_CHANNELS)
                             .map(UnauthenticatedSubscription::new)
                             .forEach(s::insert);
                     tr.commit();
@@ -285,8 +286,11 @@ public class FeedHandlers {
 
                     List<Object> existing = s.createQuery(query).setTimeout(20).list();
 
+                    // Every unknown ID costs a YouTube lookup, so only handle a few per request.
+                    // The rest are picked up by later requests once these are stored.
                     channelIds.stream()
                             .filter(id -> !existing.contains(id))
+                            .limit(Constants.MAX_UNKNOWN_CHANNELS)
                             .forEach(id -> Multithreading.runAsyncLimited(() -> DatabaseHelper.saveChannel(id)));
                 }
 
