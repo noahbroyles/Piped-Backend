@@ -7,6 +7,8 @@ import me.kavin.piped.consts.Constants;
 import me.kavin.piped.utils.*;
 import me.kavin.piped.utils.obj.MatrixHelper;
 import me.kavin.piped.utils.obj.federation.FederatedVideoInfo;
+import org.apache.commons.codec.digest.HmacAlgorithms;
+import org.apache.commons.codec.digest.HmacUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.StatelessSession;
 import org.schabi.newpipe.extractor.exceptions.ParsingException;
@@ -14,22 +16,92 @@ import org.schabi.newpipe.extractor.localization.DateWrapper;
 import org.xml.sax.InputSource;
 
 import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import static me.kavin.piped.consts.Constants.YOUTUBE_SERVICE;
 
 public class PubSubHandlers {
 
-    private static final LinkedBlockingQueue<String> pubSubQueue = new LinkedBlockingQueue<>();
+    private static final String TOPIC_PREFIX = "https://www.youtube.com/xml/feeds/videos.xml?channel_id=";
+    private static final Pattern VIDEO_ID = Pattern.compile("[a-zA-Z\\d_-]{11}");
+
+    // A notification normally holds a single video, so anything larger is not from the hub
+    private static final int MAX_ENTRIES_PER_NOTIFICATION = 50;
+    private static final int MAX_QUEUE_SIZE = 10_000;
+
+    private static final LinkedBlockingQueue<String> pubSubQueue = new LinkedBlockingQueue<>(MAX_QUEUE_SIZE);
+
+    /**
+     * Handles the hub's verification of intent. Only confirms subscriptions that this instance requested.
+     */
+    public static boolean verifyIntent(String mode, String topic) {
+
+        if (!"subscribe".equals(mode) || topic == null || !topic.startsWith(TOPIC_PREFIX))
+            return false;
+
+        String channelId = topic.substring(TOPIC_PREFIX.length());
+
+        if (!ChannelHelpers.isValidId(channelId) || DatabaseHelper.getPubSubFromId(channelId) == null)
+            return false;
+
+        PubSubHelper.updatePubSub(channelId);
+        return true;
+    }
+
+    /**
+     * Checks the hub's X-Hub-Signature header (an HMAC of the body, keyed with the secret
+     * sent when subscribing). Always true if no secret is configured.
+     */
+    public static boolean isSignatureValid(byte[] body, String signature) {
+
+        if (Constants.PUBSUB_SECRET == null)
+            return true;
+
+        if (signature == null)
+            return false;
+
+        String algorithm = StringUtils.substringBefore(signature, "=");
+        String received = StringUtils.substringAfter(signature, "=");
+
+        HmacAlgorithms hmac = switch (algorithm) {
+            case "sha1" -> HmacAlgorithms.HMAC_SHA_1;
+            case "sha256" -> HmacAlgorithms.HMAC_SHA_256;
+            case "sha384" -> HmacAlgorithms.HMAC_SHA_384;
+            case "sha512" -> HmacAlgorithms.HMAC_SHA_512;
+            default -> null;
+        };
+
+        if (hmac == null)
+            return false;
+
+        String expected = new HmacUtils(hmac, Constants.PUBSUB_SECRET).hmacHex(body);
+
+        return MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8),
+                received.toLowerCase().getBytes(StandardCharsets.UTF_8));
+    }
 
     public static void handlePubSub(byte[] body) throws Exception {
         SyndFeed feed = new SyndFeedInput().build(new InputSource(new ByteArrayInputStream(body)));
 
+        int count = 0;
 
         for (var entry : feed.getEntries()) {
+
+            if (++count > MAX_ENTRIES_PER_NOTIFICATION)
+                break;
+
+            if (entry.getLinks().isEmpty() || entry.getPublishedDate() == null)
+                continue;
+
             String url = entry.getLinks().get(0).getHref();
             String videoId = StringUtils.substring(url, -11);
+
+            if (videoId == null || !VIDEO_ID.matcher(videoId).matches())
+                continue;
 
             long publishedDate = entry.getPublishedDate().getTime();
 
@@ -38,7 +110,8 @@ public class PubSubHandlers {
             if (pubSubQueue.contains(str))
                 continue;
 
-            pubSubQueue.put(str);
+            // Drop the video if the queue is full, rather than letting it grow without bound
+            pubSubQueue.offer(str);
         }
     }
 

@@ -37,6 +37,9 @@ public class PubSubHelper {
             formBuilder.add("hub.mode", "subscribe");
             formBuilder.add("hub.lease_seconds", "432000");
 
+            if (Constants.PUBSUB_SECRET != null)
+                formBuilder.add("hub.secret", Constants.PUBSUB_SECRET);
+
             if (pubsub == null)
                 try (StatelessSession s = DatabaseSessionFactory.createStatelessSession()) {
                     pubsub = new PubSub(channelId, -1);

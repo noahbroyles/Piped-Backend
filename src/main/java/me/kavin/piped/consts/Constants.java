@@ -49,6 +49,7 @@ public class Constants {
     public static final String PUBLIC_URL;
 
     public static final String PUBSUB_URL;
+    public static final String PUBSUB_SECRET;
 
     public static final String PUBSUB_HUB_URL;
 
@@ -147,6 +148,7 @@ public class Constants {
             CAPTCHA_API_KEY = getProperty(prop, "CAPTCHA_API_KEY");
             PUBLIC_URL = getProperty(prop, "API_URL");
             PUBSUB_URL = getProperty(prop, "PUBSUB_URL", PUBLIC_URL);
+            PUBSUB_SECRET = getProperty(prop, "PUBSUB_SECRET");
             PUBSUB_HUB_URL = getProperty(prop, "PUBSUB_HUB_URL", "https://pubsubhubbub.appspot.com/subscribe");
             REQWEST_PROXY = getProperty(prop, "REQWEST_PROXY");
             REQWEST_PROXY_USER = getProperty(prop, "REQWEST_PROXY_USER");

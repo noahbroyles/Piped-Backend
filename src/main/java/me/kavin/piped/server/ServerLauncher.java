@@ -35,6 +35,7 @@ public class ServerLauncher extends MultithreadedHttpServerLauncher {
 
     private static final HttpHeader FILE_NAME = HttpHeaders.of("x-file-name");
     private static final HttpHeader LAST_ETAG = HttpHeaders.of("x-last-etag");
+    private static final HttpHeader X_HUB_SIGNATURE = HttpHeaders.of("X-Hub-Signature");
 
     @Provides
     Executor executor() {
@@ -61,20 +62,27 @@ public class ServerLauncher extends MultithreadedHttpServerLauncher {
                 .map(GET, "/version", AsyncServlet.ofBlocking(executor, request -> getRawResponse(Constants.VERSION.getBytes(UTF_8), "text/plain", "no-store")))
                 .map(HttpMethod.OPTIONS, "/*", request -> HttpResponse.ofCode(200))
                 .map(GET, "/webhooks/pubsub", AsyncServlet.ofBlocking(executor, request -> {
-                    var topic = request.getQueryParameter("hub.topic");
-                    if (topic != null)
-                        Multithreading.runAsyncLimited(() -> {
-                            String channelId = StringUtils.substringAfter(topic, "channel_id=");
-                            PubSubHelper.updatePubSub(channelId);
-                        });
+                    try {
+                        // Verification of intent: only confirm subscriptions that this instance requested
+                        if (!PubSubHandlers.verifyIntent(request.getQueryParameter("hub.mode"),
+                                request.getQueryParameter("hub.topic")))
+                            return HttpResponse.ofCode(404);
 
-                    var challenge = request.getQueryParameter("hub.challenge");
-                    return HttpResponse.ok200()
-                            .withPlainText(Objects.requireNonNullElse(challenge, "ok"));
+                        return HttpResponse.ok200()
+                                .withPlainText(Objects.requireNonNullElse(request.getQueryParameter("hub.challenge"), "ok"));
+                    } catch (Exception e) {
+                        return getErrorResponse(e, request.getPath());
+                    }
                 })).map(POST, "/webhooks/pubsub", AsyncServlet.ofBlocking(executor, request -> {
                     try {
 
-                        PubSubHandlers.handlePubSub(request.loadBody().getResult().asArray());
+                        byte[] body = request.loadBody().getResult().asArray();
+
+                        // The hub must be acknowledged with a 2xx even when the signature is wrong, so just drop it
+                        if (!PubSubHandlers.isSignatureValid(body, request.getHeader(X_HUB_SIGNATURE)))
+                            return HttpResponse.ofCode(204);
+
+                        PubSubHandlers.handlePubSub(body);
 
                         return HttpResponse.ofCode(204);
 

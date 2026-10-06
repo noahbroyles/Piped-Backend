@@ -123,6 +123,9 @@ public class Main {
         if (Constants.DISABLE_TIMERS)
             return;
 
+        if (!Constants.DISABLE_PUBSUB && Constants.PUBSUB_SECRET == null)
+            System.err.println("WARNING: PUBSUB_SECRET is not set, so PubSub notifications are not authenticated. Set it in config.properties.");
+
         if (!Constants.DISABLE_PUBSUB) new Timer().scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {

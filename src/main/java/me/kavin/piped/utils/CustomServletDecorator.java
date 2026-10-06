@@ -17,6 +17,9 @@ public class CustomServletDecorator implements AsyncServlet {
     // Endpoints that only ever receive a small credentials payload
     private static final Set<String> SMALL_BODY_PATHS = Set.of("/login", "/register", "/logout", "/user/delete");
     private static final int SMALL_BODY_LIMIT = 16 * 1024;
+    // PubSub notifications are small Atom feeds
+    private static final String WEBHOOK_PATH = "/webhooks/pubsub";
+    private static final int WEBHOOK_BODY_LIMIT = 64 * 1024;
 
     private final AsyncServlet servlet;
 
@@ -27,6 +30,7 @@ public class CustomServletDecorator implements AsyncServlet {
     @Override
     public @NotNull Promisable<HttpResponse> serve(@NotNull HttpRequest request) throws Exception {
         int limit = SMALL_BODY_PATHS.contains(request.getPath()) ? Math.min(SMALL_BODY_LIMIT, Constants.MAX_BODY_SIZE)
+                : WEBHOOK_PATH.equals(request.getPath()) ? Math.min(WEBHOOK_BODY_LIMIT, Constants.MAX_BODY_SIZE)
                 : Constants.MAX_BODY_SIZE;
 
         // Reject up front when the declared size is too large, without reading the body
