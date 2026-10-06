@@ -20,6 +20,7 @@ import me.kavin.piped.utils.resp.*;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.Session;
 import org.jetbrains.annotations.NotNull;
+import org.schabi.newpipe.extractor.exceptions.ExtractionException;
 
 import java.net.InetSocketAddress;
 import java.util.Objects;
@@ -573,10 +574,15 @@ public class ServerLauncher extends MultithreadedHttpServerLauncher {
             return getJsonResponse(error.getCode(), error.getContent(), "private");
         }
 
+        // Details are logged/reported in ExceptionHandler.handle; never expose the stack trace to the client.
+        // Extractor errors carry YouTube's reason (e.g. a private or removed video), which is safe and useful
+        // to show. Other exceptions (database, network, bugs) can reveal internal details, so they stay generic.
+        String message = e instanceof ExtractionException && e.getMessage() != null
+                ? e.getMessage()
+                : "An internal server error occurred.";
+
         try {
-            // Details are logged/reported in ExceptionHandler.handle; never expose them to the client.
-            return getJsonResponse(500, mapper
-                    .writeValueAsBytes(new SimpleErrorMessage("An internal server error occurred.")), "private");
+            return getJsonResponse(500, mapper.writeValueAsBytes(new ErrorMessageResponse(message)), "private");
         } catch (JsonProcessingException ex) {
             return HttpResponse.ofCode(500);
         }
