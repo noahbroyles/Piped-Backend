@@ -53,11 +53,15 @@ public class BgPoTokenProvider implements PoTokenProvider {
         return poToken;
     }
 
-    private PoTokenResult createWebClientPoToken() throws Exception {
-        String visitorDate = getWebVisitorData();
-
-        String poToken = ReqwestUtils.fetch(bgHelperUrl + "/generate", "POST", mapper.writeValueAsBytes(mapper.createObjectNode().put(
-                "visitorData", visitorDate
+    /**
+     * Asks the bg-helper for a PoToken bound to {@code identifier}, which is a visitor data
+     * string for session-bound tokens or a video ID for content-bound ones.
+     *
+     * @return the token, or null if the bg-helper did not return one
+     */
+    public static @Nullable String generatePoToken(String bgHelperUrl, String identifier) throws Exception {
+        return ReqwestUtils.fetch(bgHelperUrl + "/generate", "POST", mapper.writeValueAsBytes(mapper.createObjectNode().put(
+                "visitorData", identifier
         )), Map.of(
                 "Content-Type", "application/json"
         )).thenApply(response -> {
@@ -67,6 +71,12 @@ public class BgPoTokenProvider implements PoTokenProvider {
                 return null;
             }
         }).join();
+    }
+
+    private PoTokenResult createWebClientPoToken() throws Exception {
+        String visitorDate = getWebVisitorData();
+
+        String poToken = generatePoToken(bgHelperUrl, visitorDate);
 
         if (poToken != null) {
             return new PoTokenResult(visitorDate, poToken, null);

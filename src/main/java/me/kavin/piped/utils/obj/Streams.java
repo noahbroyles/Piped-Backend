@@ -33,6 +33,9 @@ public class Streams {
 
     public List<PreviewFrames> previewFrames;
 
+    // What a SABR client needs to play this video, or null when it isn't available
+    public SabrInfo sabr;
+
     public Streams(String title, String description, String uploadDate, long uploaded, String uploader, String uploaderUrl,
                    String uploaderAvatar, String thumbnailUrl, long duration, long views, long likes, long dislikes, long uploaderSubscriberCount,
                    boolean uploaderVerified, List<PipedStream> audioStreams, List<PipedStream> videoStreams,
