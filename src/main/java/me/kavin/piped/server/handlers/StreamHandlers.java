@@ -112,6 +112,20 @@ public class StreamHandlers {
             return null;
         });
 
+        // A WEB client player request of our own, for clients that can play SABR
+        final var futureSabr = Multithreading.supplyAsync(() -> {
+            Sentry.setExtra("videoId", videoId);
+            ITransaction transaction = Sentry.startTransaction("SABR info fetch", "fetch");
+            try {
+                return SabrHelper.getSabrInfo(videoId);
+            } catch (Exception e) {
+                ExceptionHandler.handle(e);
+            } finally {
+                transaction.finish();
+            }
+            return null;
+        });
+
         final var futureDislikeRating = Multithreading.supplyAsync(() -> {
             Sentry.setExtra("videoId", videoId);
             ITransaction transaction = Sentry.startTransaction("Dislike Rating", "fetch");
@@ -241,6 +255,13 @@ public class StreamHandlers {
         }
 
         Streams streams = CollectionUtils.collectStreamInfo(info);
+
+        try {
+            // Has been running alongside the main fetch, so this rarely waits long
+            streams.sabr = futureSabr.get(5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            // Clients fall back to the regular streams without it
+        }
 
         String lbryURL = null;
 

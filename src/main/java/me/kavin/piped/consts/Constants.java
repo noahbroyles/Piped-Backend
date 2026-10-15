@@ -86,6 +86,8 @@ public class Constants {
 
     public static final boolean DISABLE_LBRY;
 
+    public static final boolean DISABLE_SABR;
+
     public static final int SUBSCRIPTIONS_EXPIRY;
 
     public static final boolean CONSENT_COOKIE;
@@ -111,6 +113,8 @@ public class Constants {
     public static final String GEO_RESTRICTION_CHECKER_URL;
 
     public static final String BG_HELPER_URL;
+
+    public static final String PLAYER_N_DECODER_URL;
 
     public static String YOUTUBE_COUNTRY;
 
@@ -167,6 +171,7 @@ public class Constants {
             DISABLE_RYD = Boolean.parseBoolean(getProperty(prop, "DISABLE_RYD", "false"));
             DISABLE_SERVER = Boolean.parseBoolean(getProperty(prop, "DISABLE_SERVER", "false"));
             DISABLE_LBRY = Boolean.parseBoolean(getProperty(prop, "DISABLE_LBRY", "false"));
+            DISABLE_SABR = Boolean.parseBoolean(getProperty(prop, "DISABLE_SABR", "false"));
             SUBSCRIPTIONS_EXPIRY = Integer.parseInt(getProperty(prop, "SUBSCRIPTIONS_EXPIRY", "30"));
             CONSENT_COOKIE = Boolean.parseBoolean(getProperty(prop, "CONSENT_COOKIE", "true"));
             SENTRY_DSN = getProperty(prop, "SENTRY_DSN", "");
@@ -190,6 +195,7 @@ public class Constants {
             MATRIX_TOKEN = getProperty(prop, "MATRIX_TOKEN");
             GEO_RESTRICTION_CHECKER_URL = getProperty(prop, "GEO_RESTRICTION_CHECKER_URL");
             BG_HELPER_URL = getProperty(prop, "BG_HELPER_URL");
+            PLAYER_N_DECODER_URL = getProperty(prop, "PLAYER_N_DECODER_URL");
             prop.forEach((_key, _value) -> {
                 String key = String.valueOf(_key), value = String.valueOf(_value);
                 if (key.startsWith("hibernate"))
