@@ -70,7 +70,7 @@ public class BgPoTokenProvider implements PoTokenProvider {
             } catch (Exception e) {
                 return null;
             }
-        }).join();
+        }).get(30, TimeUnit.SECONDS); // so a hung bg-helper can't hold the caller forever
     }
 
     private PoTokenResult createWebClientPoToken() throws Exception {

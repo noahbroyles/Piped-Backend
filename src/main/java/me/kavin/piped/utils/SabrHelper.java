@@ -16,6 +16,7 @@ import rocks.kavin.reqwest4j.ReqwestUtils;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import static me.kavin.piped.consts.Constants.mapper;
@@ -37,6 +38,11 @@ public class SabrHelper {
 
     // Format fields that point at googlevideo directly; SABR formats normally don't have them anyway
     private static final List<String> DIRECT_URL_FIELDS = List.of("url", "signatureCipher", "cipher");
+
+    // How long to wait for the helper services, so a hung one can't pile up waiting requests.
+    // BotGuard takes a few seconds when the bg-helper is busy; deciphering takes milliseconds.
+    private static final long PO_TOKEN_TIMEOUT_SECONDS = 30;
+    private static final long N_DECODER_TIMEOUT_SECONDS = 15;
 
     // /streams takes any string as the video ID, but only real ones are worth a player request
     private static final Pattern VIDEO_ID_PATTERN = Pattern.compile("[a-zA-Z\\d_-]{11}");
@@ -66,7 +72,8 @@ public class SabrHelper {
                 headers, YOUTUBEI_V1_URL, null, false);
 
         // The URL has to be deciphered by the same player version the request says it uses
-        final int signatureTimestamp = RequestUtils.sendGetJson(Constants.PLAYER_N_DECODER_URL + "/sts").get()
+        final int signatureTimestamp = RequestUtils.sendGetJson(Constants.PLAYER_N_DECODER_URL + "/sts")
+                .get(N_DECODER_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .get("signatureTimestamp").asInt();
 
         final JsonBuilder<JsonObject> builder = prepareJsonBuilder(localization, contentCountry, requestInfo, null)
@@ -133,7 +140,7 @@ public class SabrHelper {
         if (formats.isEmpty())
             return null;
 
-        final String poToken = futurePoToken.get();
+        final String poToken = futurePoToken.get(PO_TOKEN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
         return new SabrInfo(
                 rewriteVideoURL(deobfuscatedUrl, Map.of()),
@@ -153,7 +160,7 @@ public class SabrHelper {
                 mapper.writeValueAsBytes(mapper.createObjectNode()
                         .put("url", url)
                         .put("signatureTimestamp", signatureTimestamp)),
-                Map.of("Content-Type", "application/json")).get();
+                Map.of("Content-Type", "application/json")).get(N_DECODER_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
         if (response.status() != 200)
             throw new RuntimeException("Player n decoder could not decipher the streaming URL: " + new String(response.body(), StandardCharsets.UTF_8));
