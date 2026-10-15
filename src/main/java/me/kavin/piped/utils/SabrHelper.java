@@ -16,6 +16,7 @@ import rocks.kavin.reqwest4j.ReqwestUtils;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import static me.kavin.piped.consts.Constants.mapper;
 import static me.kavin.piped.utils.URLUtils.rewriteVideoURL;
@@ -37,6 +38,9 @@ public class SabrHelper {
     // Format fields that point at googlevideo directly; SABR formats normally don't have them anyway
     private static final List<String> DIRECT_URL_FIELDS = List.of("url", "signatureCipher", "cipher");
 
+    // /streams takes any string as the video ID, but only real ones are worth a player request
+    private static final Pattern VIDEO_ID_PATTERN = Pattern.compile("[a-zA-Z\\d_-]{11}");
+
     /**
      * @return the SABR info for {@code videoId}, or null if SABR is disabled or YouTube didn't offer it
      */
@@ -46,18 +50,8 @@ public class SabrHelper {
         if (Constants.DISABLE_SABR || StringUtils.isEmpty(Constants.PLAYER_N_DECODER_URL))
             return null;
 
-        // Mint the PoToken while we fetch visitor data, as the bg-helper takes a moment
-        var futurePoToken = Multithreading.supplyAsync(() -> {
-            if (StringUtils.isEmpty(Constants.BG_HELPER_URL))
-                return null;
-            try {
-                // SABR wants a content-bound token, i.e. one bound to the video ID
-                return BgPoTokenProvider.generatePoToken(Constants.BG_HELPER_URL, videoId);
-            } catch (Exception e) {
-                ExceptionHandler.handle(e);
-                return null;
-            }
-        });
+        if (videoId == null || !VIDEO_ID_PATTERN.matcher(videoId).matches())
+            return null;
 
         final Localization localization = getPreferredLocalization();
         final ContentCountry contentCountry = getPreferredContentCountry();
@@ -70,8 +64,6 @@ public class SabrHelper {
         // YouTube only answers player requests properly with a visitor ID
         requestInfo.clientInfo.visitorData = getVisitorDataFromInnertube(requestInfo, localization, contentCountry,
                 headers, YOUTUBEI_V1_URL, null, false);
-
-        final String poToken = futurePoToken.get();
 
         // The URL has to be deciphered by the same player version the request says it uses
         final int signatureTimestamp = RequestUtils.sendGetJson(Constants.PLAYER_N_DECODER_URL + "/sts").get()
@@ -88,12 +80,6 @@ public class SabrHelper {
                 .value("referer", "https://www.youtube.com/watch?v=" + videoId)
                 .end()
                 .end();
-
-        if (poToken != null) {
-            builder.object("serviceIntegrityDimensions")
-                    .value("poToken", poToken)
-                    .end();
-        }
 
         final byte[] body = JsonWriter.string(builder.done()).getBytes(StandardCharsets.UTF_8);
 
@@ -116,6 +102,20 @@ public class SabrHelper {
         if (StringUtils.isEmpty(streamingUrl) || StringUtils.isEmpty(ustreamerConfig))
             return null;
 
+        // Only now that YouTube offers SABR for this video is it worth running BotGuard for a
+        // PoToken, which is expensive. It is minted while the n parameter gets deciphered.
+        var futurePoToken = Multithreading.supplyAsync(() -> {
+            if (StringUtils.isEmpty(Constants.BG_HELPER_URL))
+                return null;
+            try {
+                // SABR wants a content-bound token, i.e. one bound to the video ID
+                return BgPoTokenProvider.generatePoToken(Constants.BG_HELPER_URL, videoId);
+            } catch (Exception e) {
+                ExceptionHandler.handle(e);
+                return null;
+            }
+        });
+
         // Without a deciphered n parameter, googlevideo answers SABR requests with a 403
         final String deobfuscatedUrl = decipher(streamingUrl, signatureTimestamp);
 
@@ -132,6 +132,8 @@ public class SabrHelper {
 
         if (formats.isEmpty())
             return null;
+
+        final String poToken = futurePoToken.get();
 
         return new SabrInfo(
                 rewriteVideoURL(deobfuscatedUrl, Map.of()),
